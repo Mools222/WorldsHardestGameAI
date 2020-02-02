@@ -1,0 +1,24 @@
+.label {
+    -fx-font-size: 20;
+    -fx-font-weight: bold;
+    -fx-font-family: Arial;
+    -fx-padding: 0 20 0 0;
+}
+
+.game-pane {
+    /*-fx-border-color: black;*/
+    /*-fx-border-width: 2;*/
+    -fx-padding: 0 50 50 0;
+}
+
+.border-pane {
+    -fx-padding: 10;
+}
+
+#vbox {
+    -fx-padding: 10;
+}
+
+#vBoxWinnerAiTimes {
+    -fx-padding: 50 0 0 0;
+}
