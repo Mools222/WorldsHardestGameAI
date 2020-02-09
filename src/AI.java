@@ -14,16 +14,8 @@ public class AI extends Entity {
 
         setFill(Color.color(Math.random(), Math.random(), Math.random()));
 
-        createDirectionTimeline();
-        createMovementTimeline();
-    }
-
-    private void createDirectionTimeline() {
         setRandomDirection(); // Set the first direction
-
-        Timeline directionTimeline = new Timeline(new KeyFrame(Duration.millis(directionSpeed), e -> setRandomDirection()));
-        directionTimeline.setCycleCount(Timeline.INDEFINITE);
-        directionTimeline.play();
+        createMovementTimeline();
     }
 
     private void setRandomDirection() {
@@ -40,7 +32,6 @@ public class AI extends Entity {
         double degreesInRadians = Math.toRadians(360.0 * direction);
         double distanceX = distancePerMove * Math.sin(degreesInRadians);
         double distanceY = distancePerMove * Math.cos(degreesInRadians);
-
         double leftX = getX();
         double topY = getY();
         double rightX = leftX + entityWidthAndHeight;
@@ -52,6 +43,13 @@ public class AI extends Entity {
                 levelSidesPolygon.contains(rightX + distanceX, bottomY + distanceY)) {
             setX(leftX + distanceX);
             setY(topY + distanceY);
+        }
+
+        ++directionCounter;
+
+        if (directionCounter == numberOfMovementCyclesPerDirection) {
+            directionCounter = 0;
+            setRandomDirection();
         }
     }
 

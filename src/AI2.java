@@ -9,7 +9,7 @@ public class AI2 extends Entity {
     private int numberOfMoves;
     private double direction;
     private int moveCounter;
-    private Timeline directionTimeline, movementTimeline;
+    private Timeline movementTimeline;
     private double fitness;
     private boolean outOfMoves;
 
@@ -20,22 +20,14 @@ public class AI2 extends Entity {
 
         setFill(Color.color(Math.random(), Math.random(), Math.random()));
 
-        createDirectionTimeline();
         createMovementTimeline();
     }
 
-    private void createDirectionTimeline() {
-        setNextDirection(); // Set the first direction
-
-        directionTimeline = new Timeline(new KeyFrame(Duration.millis(directionSpeed), e -> setNextDirection()));
-        directionTimeline.setCycleCount(Timeline.INDEFINITE);
-        directionTimeline.play();
-    }
-
     private void setNextDirection() {
-        if (moveCounter < numberOfMoves)
-            direction = directions[moveCounter++];
-        else {
+        ++moveCounter;
+        if (moveCounter < numberOfMoves) {
+            direction = directions[moveCounter];
+        } else {
             outOfMoves = true;
             die(); // Die from running out of moves
         }
@@ -44,12 +36,10 @@ public class AI2 extends Entity {
     private void createMovementTimeline() {
         movementTimeline = new Timeline(new KeyFrame(Duration.millis(movementSpeed), e -> move()));
         movementTimeline.setCycleCount(Timeline.INDEFINITE);
-        movementTimeline.play();
     }
 
-    public void stopTimelines() {
-        movementTimeline.stop();
-        directionTimeline.stop();
+    public void startTimeline() {
+        movementTimeline.play();
     }
 
     private void move() {
@@ -70,12 +60,19 @@ public class AI2 extends Entity {
         }
 
         isWinner();
+
+        ++directionCounter;
+
+        if (directionCounter == numberOfMovementCyclesPerDirection) {
+            directionCounter = 0;
+            setNextDirection();
+        }
     }
 
     private void isWinner() {
         if (getX() > GamePane.goalX) {
             winner = true;
-            stopTimelines();
+            movementTimeline.stop();
             gamePane.stopAndRemoveAllNonWinnerAi2s();
             gamePane.winnerFound(directions);
         }
@@ -84,7 +81,7 @@ public class AI2 extends Entity {
     public void die() {
         dead = true;
         gamePane.getChildren().remove(this);
-        stopTimelines();
+        movementTimeline.stop();
         calculateFitness();
 
         if (!outOfMoves) // Don't update the alive AIs label when the AI dies from running out of moves
@@ -97,7 +94,6 @@ public class AI2 extends Entity {
         double rightX = getX() + entityWidthAndHeight;
         double distanceToGoal = GamePane.goalX - rightX;
         fitness = distanceToGoal;
-//        fitness = 1 / (distanceToGoal * distanceToGoal); // Higher fitness score = better fitness
     }
 
     public double getFitness() {
@@ -106,13 +102,6 @@ public class AI2 extends Entity {
 
     public double[] getDirections() {
         return directions;
-    }
-
-    @Override
-    public String toString() {
-        return "AI2{" +
-                "fitness=" + fitness +
-                '}';
     }
 
     public boolean isOutOfMoves() {

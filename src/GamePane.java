@@ -24,7 +24,7 @@ public class GamePane extends Pane {
     public AI2Winner[] ai2WinnerArray;
     private Obstacle[] obstaclesArray;
     public boolean createPlayer, createAi, createAi2, createAiWinner;
-    private int generationNumber, numberOfAis, numberOfMoves, movesGainedPerGeneration;
+    private int generationNumber, numberOfAis, numberOfMoves, movesGained;
     private AtomicInteger atomicIntegerAliveAis; // Thread safe integer
     private boolean allDeclaredDeadDone; // Without this, the createAi2Babies() method can be run multiple times and destroy the program
     private boolean gameStopped;
@@ -36,13 +36,13 @@ public class GamePane extends Pane {
     private double runningSum = 0, randomFitness;
 
     public GamePane() {
-        initializeVariables();
         createLevel();
     }
 
     public void start() {
         gameStopped = false;
         GameView.labelGameStatus.setText("Game running.");
+        initializeVariables();
 
         if (createPlayer)
             createPlayer();
@@ -63,10 +63,10 @@ public class GamePane extends Pane {
     }
 
     private void initializeVariables() {
-        generationNumber = 1;
-        numberOfAis = 1000;
+        generationNumber = 1; // Set to 1 since the 1st generation doesn't go through any createAi2Babies method
+        numberOfAis = 7000;
         numberOfMoves = 10;
-        movesGainedPerGeneration = 10;
+        movesGained = 10;
         atomicIntegerAliveAis = new AtomicInteger(numberOfAis);
         winnerFound = false; // Needed for resetting
         allDeclaredDeadDone = false; // Needed for resetting
@@ -91,7 +91,7 @@ public class GamePane extends Pane {
         getChildren().add(levelWallsPolygon);
     }
 
-    private ObservableList<Double> addLevelPoints(ObservableList<Double> list) {
+    private void addLevelPoints(ObservableList<Double> list) {
         File file = new File("Level 1.txt");
 
         try (Scanner scanner = new Scanner(file)) {
@@ -106,8 +106,6 @@ public class GamePane extends Pane {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        return list;
     }
 
     private void addLevelColors() {
@@ -149,11 +147,7 @@ public class GamePane extends Pane {
     }
 
     private void createAi() {
-        int numberOfAis = 1000;
         aiArray = new AI[numberOfAis];
-
-//        AI ai = new AI(100, 175, playerWidthAndHeight, levelSidesPolygon);
-//        getChildren().add(ai);
 
         for (int i = 0; i < numberOfAis; i++) {
             AI ai = new AI(50 + levelOffsetInPixels, 125 + levelOffsetInPixels, this, levelWallsPolygon);
@@ -171,15 +165,15 @@ public class GamePane extends Pane {
             ai2Array[i] = ai2;
         }
 
-        updateLabels();
+        updateAi2Labels();
 
         addAi2();
+        startAi2();
     }
 
     private double[] createDirections(double[] directions, int startingIndex) {
-        for (int i = startingIndex; i < directions.length; i++) {
+        for (int i = startingIndex; i < directions.length; i++)
             directions[i] = Math.random();
-        }
 
         return directions;
     }
@@ -187,6 +181,12 @@ public class GamePane extends Pane {
     private void addAi2() {
         for (AI2 ai2 : ai2Array)
             getChildren().add(ai2);
+    }
+
+    // Trying to separate this out from creating the AIs and adding them to the pane, so they don't start moving at too different times
+    private void startAi2() {
+        for (AI2 ai2 : ai2Array)
+            ai2.startTimeline();
     }
 
     private void createObstacles() {
@@ -204,6 +204,7 @@ public class GamePane extends Pane {
             obstacle.stopMovementTimeline();
             getChildren().remove(obstacle);
         }
+        obstaclesArray = null;
     }
 
     public void checkAllDead() {
@@ -219,7 +220,8 @@ public class GamePane extends Pane {
 
             if (allDead && !allDeclaredDeadDone) {
                 allDeclaredDeadDone = true;
-                createAi2Babies();
+//                createAi2Babies();
+                createAi2BabiesImproved();
             }
         }
     }
@@ -228,7 +230,6 @@ public class GamePane extends Pane {
         gameStopped = true;
         GameView.labelGameStatus.setText("Game reset.");
 
-        initializeVariables();
         removeObstacles();
         removeAllEntities();
         resetLabels();
@@ -277,7 +278,7 @@ public class GamePane extends Pane {
         }
 
         // Calculate next generation's amount of moves
-        int newNumberOfMoves = numberOfMoves + movesGainedPerGeneration;
+        int newNumberOfMoves = numberOfMoves + movesGained;
 
         // Create array for next generation
         AI2[] ai2BabiesArray = new AI2[numberOfAis];
@@ -289,8 +290,8 @@ public class GamePane extends Pane {
 //        double highestFitness = calculateHighestFitness();
         // Used for method 3 (see below)
 //        Arrays.parallelSort(ai2Array, Comparator.comparing(AI2::getFitness).reversed()); // Sort the list in descending order by fitness
-        Arrays.parallelSort(ai2Array, Comparator.comparing(AI2::getFitness)); // Sort the list in ascending order by fitness (lowest distance to goal x first)
-        double getThisTopFitnessPercentage = 0.1;
+        Arrays.parallelSort(ai2Array, Comparator.comparing(AI2::getFitness)); // Sort the list in ascending order by fitness (lowest distance to goal first)
+        double topFitnessPercentageSelectedToBeParents = 0.1;
 
         for (int i = 0; i < numberOfAis; i++) {
             // Natural selection - Select most fit parent directions (i.e the ones that made it farthest)
@@ -299,7 +300,7 @@ public class GamePane extends Pane {
             // Method 2
 //            double[] parentDirections = naturalSelection2(sumOfFitness);
             // Method 3
-            double[] parentDirections = naturalSelection3((int) (i % (numberOfAis * getThisTopFitnessPercentage)));
+            double[] parentDirections = naturalSelection3((int) (i % (numberOfAis * topFitnessPercentageSelectedToBeParents)));
 
             // Mutate parent directions
             double[] newDirections = new double[newNumberOfMoves];
@@ -320,19 +321,98 @@ public class GamePane extends Pane {
         numberOfMoves = newNumberOfMoves;
 
         // Update labels
-        updateLabels();
+        updateAi2Labels();
 
         // Reset atomic int
         atomicIntegerAliveAis = new AtomicInteger(numberOfAis);
 
         removeObstacles();
         addAi2();
+        startAi2();
         createObstacles();
 
         allDeclaredDeadDone = false;
     }
 
-    private void updateLabels() {
+    // This vastly improves the final time it takes the AI to make it to the goal (from ~20 seconds to ~13 seconds). However, it's not as fun to watch as the createAi2Babies() method, since the createAi2BabiesImproved() method takes multiple generations before the number of moves go up
+    private void createAi2BabiesImproved() {
+        // Stop if no AI ran out of moves (meaning every AI got hit by an obstacle)
+        if (atomicIntegerAliveAis.get() == 0) {
+            System.out.println("All AI2s killed by obstacles");
+            GameView.labelGameStatus.setText("All AIs died to obstacles. Please reset.");
+            return;
+        }
+
+        // Calculate next generation's amount of moves
+        int numberOfMovesGainedThisGeneration = generationNumber > 0 && generationNumber % 5 == 0 ? movesGained : 0;
+        int newNumberOfMoves = numberOfMoves + numberOfMovesGainedThisGeneration;
+
+        // Create array for next generation
+        AI2[] ai2BabiesArray = new AI2[numberOfAis];
+
+        // Sort the list in ascending order by fitness (lowest distance to goal first)
+        Arrays.parallelSort(ai2Array, Comparator.comparing(AI2::getFitness));
+
+        double topFitnessPercentageSelectedToBeParents = 0.1;
+
+        // If no new moves are gained, save the best directions from the generation and re-mutate the moves gained most recently for the rest
+        if (numberOfMovesGainedThisGeneration == 0) {
+            double topFitnessPercentageToBeSaved = 0.1;
+            int numberOfAisSaved = (int) (numberOfAis * topFitnessPercentageToBeSaved);
+
+            // Save the best directions without altering them
+            for (int i = 0; i < numberOfAisSaved; i++) {
+                double[] parentDirections = naturalSelection3((int) (i % (numberOfAis * topFitnessPercentageSelectedToBeParents)));
+                ai2BabiesArray[i] = new AI2(50 + levelOffsetInPixels, 125 + levelOffsetInPixels, this, levelWallsPolygon, parentDirections);
+            }
+
+            // Re-mutate the rest of the directions
+            for (int i = numberOfAisSaved; i < numberOfAis; i++) {
+                double[] parentDirections = naturalSelection3((int) (i % (numberOfAis * topFitnessPercentageSelectedToBeParents)));
+                double[] newDirections = new double[numberOfMoves];
+                System.arraycopy(parentDirections, 0, newDirections, 0, parentDirections.length);
+                double[] mutatedDirections = createDirections(newDirections, numberOfMoves - movesGained);
+                ai2BabiesArray[i] = new AI2(50 + levelOffsetInPixels, 125 + levelOffsetInPixels, this, levelWallsPolygon, mutatedDirections);
+            }
+        } else { // If new moves are gained
+            for (int i = 0; i < numberOfAis; i++) {
+                // Natural selection - Select most fit parent directions (i.e the ones that made it farthest)
+                double[] parentDirections = naturalSelection3((int) (i % (numberOfAis * topFitnessPercentageSelectedToBeParents)));
+
+                // Mutate parent directions
+                double[] newDirections = new double[newNumberOfMoves];
+                System.arraycopy(parentDirections, 0, newDirections, 0, parentDirections.length);
+                double[] mutatedDirections = createDirections(newDirections, numberOfMoves);
+
+                // Create mutated baby
+                ai2BabiesArray[i] = new AI2(50 + levelOffsetInPixels, 125 + levelOffsetInPixels, this, levelWallsPolygon, mutatedDirections);
+            }
+        }
+
+        // Initialize ai2Array with mutated babies
+        ai2Array = ai2BabiesArray;
+
+        // Increment generation
+        ++generationNumber;
+
+        // Increment numberOfMoves
+        numberOfMoves = newNumberOfMoves;
+
+        // Update labels
+        updateAi2Labels();
+
+        // Reset atomic int
+        atomicIntegerAliveAis = new AtomicInteger(numberOfAis);
+
+        removeObstacles();
+        addAi2();
+        startAi2();
+        createObstacles();
+
+        allDeclaredDeadDone = false;
+    }
+
+    private void updateAi2Labels() {
         GameView.labelGenerationNumber.setText(String.valueOf(generationNumber));
         GameView.labelNumberOfMovesNumber.setText(String.valueOf(numberOfMoves));
         GameView.labelAi2sAlivePreviousGenNumber.setText(String.valueOf(atomicIntegerAliveAis.get()));
@@ -391,13 +471,13 @@ public class GamePane extends Pane {
      * The createAi2Babies() creates a loop to create the ai2BabiesArray
      * For each new baby, the naturalSelection3() method is called with an index (i), which is mod'ed by numberOfAis * getThisTopFitnessPercentage
      * Example:
-     *      i = 230
-     *      numberOfAis = 1000
-     *      getThisTopFitnessPercentage = 0.1
-     *      numberOfAis * getThisTopFitnessPercentage = 100 - (Main case: Only parents in top 100 (index 0 to 99) are picked. Exception: If a parent in top 100 did not run out of moves (i.e. died to an obstacle), a parent in a higher index may be picked)
-     *      230 % 100 = 30
-     *      If index 30 of ai2Array is not out of moves, this will the the baby's parent
-     *      If index 30 of ai2Array is out of moves, the method will recursively call itself and try the next index (31) - it will continue to do so until it reaches index 1000, which will then be mod'ed by the recursive call to 0 and it starts from the beginning of the list
+     * i = 230
+     * numberOfAis = 1000
+     * getThisTopFitnessPercentage = 0.1
+     * numberOfAis * getThisTopFitnessPercentage = 100 - (Main case: Only parents in top 100 (index 0 to 99) are picked. Exception: If a parent in top 100 did not run out of moves (i.e. died to an obstacle), a parent at a higher index may be picked)
+     * 230 % 100 = 30
+     * If index 30 of ai2Array is not out of moves, this will the the baby's parent
+     * If index 30 of ai2Array is out of moves, the method will recursively call itself and try the next index (31) - it will continue to do so until it reaches index 1000, which will then be modulus'ed by the recursive call to 0 and it starts from the beginning of the list. This only works as long as at least one AI didn't die from an obstacle, which is why the game stops if this is not the case
      */
     private double[] naturalSelection3(int i) {
         if (ai2Array[i].isOutOfMoves()) // Only get the directions where the AI ran out of moves. We don't want the ones where the AI got hit by an obstacle
@@ -459,6 +539,10 @@ public class GamePane extends Pane {
             AI2Winner ai2Winner = new AI2Winner(50 + levelOffsetInPixels, 125 + levelOffsetInPixels, this, levelWallsPolygon, directions);
             ai2WinnerArray[i] = ai2Winner;
             getChildren().add(ai2Winner);
+        }
+
+        for (AI2Winner ai2Winner : ai2WinnerArray) {
+            ai2Winner.startTimeline();
         }
     }
 }

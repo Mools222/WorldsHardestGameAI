@@ -8,7 +8,8 @@ import java.io.Serializable;
 public class Entity extends Rectangle implements Serializable {
     protected double distancePerMove = 3;
     protected double movementSpeed = 25 / GamePane.gameSpeed; // How often the entity moves
-    protected double directionSpeed = 100 / GamePane.gameSpeed; // For long the entity moves in one direction
+    protected byte numberOfMovementCyclesPerDirection = 4; // movementSpeed is low in order to make it look smooth. However, they don't get very far in 25 milliseconds, so I let them move in the same direction for multiple cycles
+    protected byte directionCounter;
     protected double entityWidthAndHeight = 25;
     protected GamePane gamePane;
     protected Polygon levelSidesPolygon;

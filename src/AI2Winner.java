@@ -13,7 +13,7 @@ public class AI2Winner extends Entity {
     private int numberOfMoves;
     private double direction;
     private int moveCounter;
-    private Timeline directionTimeline, movementTimeline;
+    private Timeline movementTimeline;
 
     public AI2Winner(double x, double y, GamePane gamePane, Polygon levelSidesPolygon, double[] directions) {
         super(x, y, gamePane, levelSidesPolygon);
@@ -22,38 +22,25 @@ public class AI2Winner extends Entity {
 
         setFill(Color.color(Math.random(), Math.random(), Math.random()));
 
-        createDirectionTimeline();
         createMovementTimeline();
     }
 
-    private void createDirectionTimeline() {
-        setNextDirection(); // Set the first direction
-
-        directionTimeline = new Timeline(new KeyFrame(Duration.millis(directionSpeed), e -> setNextDirection()));
-        directionTimeline.setCycleCount(Timeline.INDEFINITE);
-        directionTimeline.play();
-    }
-
     private void setNextDirection() {
-        if (moveCounter < numberOfMoves)
-            direction = directions[moveCounter++];
-        else {
-//            outOfMoves = true;
-//            die(); // Die from running out of moves
-
-            stopTimelines();
+        ++moveCounter;
+        if (moveCounter < numberOfMoves) {
+            direction = directions[moveCounter];
+        } else {
+            movementTimeline.stop();
         }
     }
 
     private void createMovementTimeline() {
         movementTimeline = new Timeline(new KeyFrame(Duration.millis(movementSpeed), e -> move()));
         movementTimeline.setCycleCount(Timeline.INDEFINITE);
-        movementTimeline.play();
     }
 
-    private void stopTimelines() {
-        movementTimeline.stop();
-        directionTimeline.stop();
+    public void startTimeline() {
+        movementTimeline.play();
     }
 
     private void move() {
@@ -74,6 +61,13 @@ public class AI2Winner extends Entity {
         }
 
         isWinner();
+
+        ++directionCounter;
+
+        if (directionCounter == numberOfMovementCyclesPerDirection) {
+            directionCounter = 0;
+            setNextDirection();
+        }
     }
 
     private void isWinner() {
@@ -95,7 +89,7 @@ public class AI2Winner extends Entity {
     public void die() {
         dead = true;
         gamePane.getChildren().remove(this);
-        stopTimelines();
+        movementTimeline.stop();
         if (!winner)
             System.out.println("Guess it wasn't a winner after all");
     }
