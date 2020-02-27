@@ -74,7 +74,7 @@ public class GameView extends Application {
         // Create a scene and place it in the stage
         Scene scene = new Scene(vBox);
         scene.getStylesheets().add("style.css");
-        primaryStage.setTitle("AI"); // Set the stage title
+        primaryStage.setTitle("World's Hardest Game"); // Set the stage title
         primaryStage.setScene(scene); // Place the scene in the stage
         primaryStage.show(); // Display the stage
 
