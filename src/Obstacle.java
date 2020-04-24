@@ -82,7 +82,7 @@ public class Obstacle extends Circle {
 
     private void checkAi2Dead() {
         for (AI2 ai2 : ai2Array) {
-            if (intersects(ai2.getLayoutBounds()) && !ai2.dead) { // Must do a "not dead check", since the layout bounds of the AI don't disappear just because the AI is removed from the GamePane
+            if (!ai2.dead && intersects(ai2.getLayoutBounds())) { // Must do a "not dead check", since the layout bounds of the AI don't disappear just because the AI is removed from the GamePane
                 ai2.die();
             }
 
@@ -101,7 +101,7 @@ public class Obstacle extends Circle {
 
     private void checkAi2WinnerDead() {
         for (AI2Winner ai2Winner : ai2WinnerArray) {
-            if (intersects(ai2Winner.getLayoutBounds()) && !ai2Winner.dead) // Must do a "not dead check", since the layout bounds of the AI don't disappear just because the AI is removed from the GamePane
+            if (!ai2Winner.dead && intersects(ai2Winner.getLayoutBounds())) // Must do a "not dead check", since the layout bounds of the AI don't disappear just because the AI is removed from the GamePane
                 ai2Winner.die();
         }
     }

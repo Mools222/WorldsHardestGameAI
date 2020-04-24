@@ -79,21 +79,16 @@ public class AI2 extends Entity {
     }
 
     public void die() {
+        movementTimeline.stop();
         dead = true;
         gamePane.getChildren().remove(this);
-        movementTimeline.stop();
         calculateFitness();
-
-        if (!outOfMoves) // Don't update the alive AIs label when the AI dies from running out of moves
-            gamePane.updateAliveLabel();
-
-        gamePane.checkAllDead();
+        gamePane.countDead(outOfMoves);
     }
 
     private void calculateFitness() {
         double rightX = getX() + entityWidthAndHeight;
-        double distanceToGoal = GamePane.goalX - rightX;
-        fitness = distanceToGoal;
+        fitness = GamePane.goalX - rightX;
     }
 
     public double getFitness() {

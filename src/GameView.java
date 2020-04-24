@@ -89,6 +89,9 @@ public class GameView extends Application {
 
             gamePane.start();
             buttonReset.requestFocus();
+
+            if (gamePane.createPlayer)
+                gamePane.requestFocus();
         });
 
         buttonReset.setOnAction(event -> {

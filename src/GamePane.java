@@ -25,10 +25,8 @@ public class GamePane extends Pane {
     private Obstacle[] obstaclesArray;
     public boolean createPlayer, createAi, createAi2, createAiWinner;
     private int generationNumber, numberOfAis, numberOfMoves, movesGained;
-    private AtomicInteger atomicIntegerAliveAis; // Thread safe integer
-    private boolean allDeclaredDeadDone; // Without this, the createAi2Babies() method can be run multiple times and destroy the program
-    private boolean gameStopped;
-    private boolean winnerFound;
+    private AtomicInteger aisWithMovesLeft, aisAlive; // Thread safe integers
+    private boolean gameStopped, winnerFound;
     public long startTime;
     public int winnerTimesCounter;
 
@@ -67,14 +65,10 @@ public class GamePane extends Pane {
         numberOfAis = 7000;
         numberOfMoves = 10;
         movesGained = 10;
-        atomicIntegerAliveAis = new AtomicInteger(numberOfAis);
+        aisWithMovesLeft = new AtomicInteger(numberOfAis);
+        aisAlive = new AtomicInteger(numberOfAis);
         winnerFound = false; // Needed for resetting
-        allDeclaredDeadDone = false; // Needed for resetting
         winnerTimesCounter = 1;
-    }
-
-    public void updateAliveLabel() {
-        GameView.labelAi2sAliveNumber.setText(String.valueOf(atomicIntegerAliveAis.decrementAndGet()));
     }
 
     private void createLevel() {
@@ -207,22 +201,14 @@ public class GamePane extends Pane {
         obstaclesArray = null;
     }
 
-    public void checkAllDead() {
-        if (!gameStopped && !winnerFound) {
-            boolean allDead = true;
 
-            for (AI2 ai2 : ai2Array) {
-                if (!ai2.dead) {
-                    allDead = false;
-                    break;
-                }
-            }
+    public void countDead(boolean outOfMoves) {
+        if (!outOfMoves) // Don't update the "alive AIs" label when the AI dies from running out of moves
+            GameView.labelAi2sAliveNumber.setText(String.valueOf(aisWithMovesLeft.decrementAndGet()));
 
-            if (allDead && !allDeclaredDeadDone) {
-                allDeclaredDeadDone = true;
-//                createAi2Babies();
-                createAi2BabiesImproved();
-            }
+        if (aisAlive.decrementAndGet() == 0 && !gameStopped && !winnerFound) {
+//            createAi2Babies();
+            createAi2BabiesImproved();
         }
     }
 
@@ -271,7 +257,7 @@ public class GamePane extends Pane {
 
     private void createAi2Babies() {
         // Stop if no AI ran out of moves (meaning every AI got hit by an obstacle)
-        if (atomicIntegerAliveAis.get() == 0) {
+        if (aisWithMovesLeft.get() == 0) {
             System.out.println("All AI2s killed by obstacles");
             GameView.labelGameStatus.setText("All AIs died to obstacles. Please reset.");
             return;
@@ -323,21 +309,20 @@ public class GamePane extends Pane {
         // Update labels
         updateAi2Labels();
 
-        // Reset atomic int
-        atomicIntegerAliveAis = new AtomicInteger(numberOfAis);
+        // Reset atomic ints
+        aisWithMovesLeft = new AtomicInteger(numberOfAis);
+        aisAlive = new AtomicInteger(numberOfAis);
 
         removeObstacles();
         addAi2();
         startAi2();
         createObstacles();
-
-        allDeclaredDeadDone = false;
     }
 
     // This vastly improves the final time it takes the AI to make it to the goal (from ~20 seconds to ~13 seconds). However, it's not as fun to watch as the createAi2Babies() method, since the createAi2BabiesImproved() method takes multiple generations before the number of moves go up
     private void createAi2BabiesImproved() {
         // Stop if no AI ran out of moves (meaning every AI got hit by an obstacle)
-        if (atomicIntegerAliveAis.get() == 0) {
+        if (aisWithMovesLeft.get() == 0) {
             System.out.println("All AI2s killed by obstacles");
             GameView.labelGameStatus.setText("All AIs died to obstacles. Please reset.");
             return;
@@ -401,21 +386,20 @@ public class GamePane extends Pane {
         // Update labels
         updateAi2Labels();
 
-        // Reset atomic int
-        atomicIntegerAliveAis = new AtomicInteger(numberOfAis);
+        // Reset atomic ints
+        aisWithMovesLeft = new AtomicInteger(numberOfAis);
+        aisAlive = new AtomicInteger(numberOfAis);
 
         removeObstacles();
         addAi2();
         startAi2();
         createObstacles();
-
-        allDeclaredDeadDone = false;
     }
 
     private void updateAi2Labels() {
         GameView.labelGenerationNumber.setText(String.valueOf(generationNumber));
         GameView.labelNumberOfMovesNumber.setText(String.valueOf(numberOfMoves));
-        GameView.labelAi2sAlivePreviousGenNumber.setText(String.valueOf(atomicIntegerAliveAis.get()));
+        GameView.labelAi2sAlivePreviousGenNumber.setText(String.valueOf(aisWithMovesLeft.get()));
         GameView.labelAi2sAliveNumber.setText(String.valueOf(numberOfAis));
     }
 
